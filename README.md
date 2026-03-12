@@ -1,1 +1,80 @@
+Maurice Langner, 2025
+
 Dockerized Flask Web Application with PostgreSQL backend, Gunicorn and Nginx for the 2026 ReproHum Shared Task paper for experiment #0124-03.
+
+
+
+ Usage of the dockerized reprohum flask app for human NLG evaluation
+
+ ### BEFORE DEPLOYMENT ###
+ ### DO NOT ACTIVATE FLASK DEBUGGER IN PRODUCTION ENVIRONMENT!
+ ### FLASK_DEBUG in env.prod should be set to 0!
+ ### TODO: Before production, change password in env.prod.db!
+
+
+ - reprohum_app_dockerized
+ | - docker-compose.prod.yml
+
+ $ cd reprohum_app_dockerized
+
+   ### Create docker image with respective docker-compose file and run containers:
+
+ $ sudo docker compose -f docker-compose.prod.yml up -d --build
+
+   ### Create database and init Tables within started container
+
+ $ sudo docker compose exec web python manage.py create_db
+ $ sudo docker compose exec web python manage.py initTasks
+
+
+
+
+
+   ### Stopping containers:
+
+ - reprohum_app_dockerized
+ | - docker-compose.prod.yml
+
+ $  sudo docker compose down -v
+
+
+
+
+
+   ### Changing JS files and static stuff
+
+   ### For making changes in js scripts and other static files (except jinja templates) visible,
+   ### it is sometimes necessary to delete volumes manually
+
+   ### ATTENTION: DO NOT DELETE VOLUMES MANUALLY WHEN DATABASE ENTRIES FROM PARTICIPANTS HAVE BEEN RECORDED!
+   ### DOUBLE-CHECK WHICH VOLUMES YOU DELETE! DANGER OF DATA LOSS!
+   ### Volumes will be re-created and the new static files copied to them on re-creating the containers
+
+ $ sudo docker volume ls
+    ### identify static volume and its name / id and then remove volume:
+ $ sudo docker volume rm VOLUME_NAME (e.g. reprohum_app_dockerized_static_volume)
+
+
+
+
+   ### Accessing database inside running containers from outside with your username and your database name
+   ### This command opens a db querying interface in your console, so you can execute sql queries
+
+ $ sudo docker compose exec db psql --username=reprohum_reg_app --dbname=reprohum_reg_db
+        ### list dbs
+        --> $ \l
+        ### connect to specific sb
+        --> $ \c DB_NAME
+        ### list all tables in DB_NAME
+        --> $ \dt
+        ### you can execute SQL wueries from here (don't forget ";" at the end), e.g.
+        --> $ SELECT * from TASKS;
+        ### disconnect:
+        --> $ \q
+
+
+
+
+
+### To access the default app as it is currently configured locally,
+### open browser and enter url http://127.0.0.1:1337/?PROLIFIC_PID=a1&SESSION_ID=1
