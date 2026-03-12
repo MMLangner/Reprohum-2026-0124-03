@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css" integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js" integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1" crossorigin="anonymous"></script>
+  <!-- timer.js -->
+  <script type="text/javascript" src="{{ url_for('static', filename='item_collator_v2.js') }}"></script>
+</head>
+
+<body class="container"> <!--onload="load_session('{{session_id}}', '{{participant_id}}')">-->
+<div class="row">
+</div>
+<div class="text-center">
+  <p class="lead">
+          <strong>Welcome!</strong> Thank you for participating in our research. Please read the instructions carefully.
+  </p>
+</div>
+<div class="text-justify">
+  <section id="Proceedings">
+    <h3>Proceedings</h3>
+    <p class="lead">
+              In the next pages, you will be presented with 24 very short texts, each describing pieces of data, expressing properties and relations of entities. In the texts, references to entities are highlighted in yellow, as in the following example:
+    </p>
+
+    <div class="jumbotron lead">
+              <div class="row justify-content-center">
+                <div class="col-6">
+                  <h5 class="text-center">Data</h5>
+                  <table class="table table-striped small">
+                    <tr>
+                      <td>Adolfo_Suárez_Madrid–Barajas_Airport</td>
+                      <td><strong>runwayLength</strong></td>
+                      <td>4349.0</td>
+                    </tr>
+                    <tr>
+                      <td>Adolfo_Suárez_Madrid–Barajas_Airport</td>
+                      <td><strong>location</strong></td>
+                      <td>Madrid</td>
+                    </tr>
+                    <tr>
+                      <td>Adolfo_Suárez_Madrid–Barajas_Airport</td>
+                      <td><strong>elevationAboveTheSeaLevel_(in_metres)</strong></td>
+                      <td>610.0</td>
+                    </tr>
+                    <tr>
+                      <td>Adolfo_Suárez_Madrid–Barajas_Airport</td>
+                      <td><strong>operatingOrganisation</strong></td>
+                      <td>ENAIRE</td>
+                    </tr>
+                    <tr>
+                      <td>Adolfo_Suárez_Madrid–Barajas_Airport</td>
+                      <td><strong>runwayName</strong></td>
+                      <td>"14L/32R"</td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+              <br>
+              <div class="text-justify" id="article">
+                <h5 class="text-center">Summary</h5>
+                <p class="lead">
+                  <p class="lead" id="text_article"><span style="background-color: #ffff00">adofo suárez madrid-barajas airport</span> , which lies 610 metres above sea level , is located in <span style="background-color: #ffff00">madrid</span> and operated by <span style="background-color: #ffff00">enaire</span> . <span style="background-color: #ffff00">the airport 's</span> runway , named <span style="background-color: #ffff00">14l/32r</span> , has a length of 4349.0 .</p>
+                </p>
+              </div>
+    </div>
+
+    <p class="lead">
+              We would like to hear your opinion about the quality of the texts to describe the data, taking into account the <strong>clarity</strong> of the texts (does the text clearly express the data?), with special emphasis on the references. 
+    </p>
+
+    <p class="lead">
+              Please rate this on a scale from <strong>Very Bad</strong> to <strong>Very Good</strong>. As you may see by our example, all words in the text are <strong>lowercased</strong> and <strong>tokenized</strong> (all units in the text, including punctuation, are separated by whitespaces). We ask you <strong>to do not take these issues into account in your evaluation</strong>.
+          </p>
+          <p class="lead">
+              The experiment will last around 15 minutes. It should be done without pauses. Hence, be sure to start it only if you have that time available. Each of the 24 texts you will evaluate has a 20 second minimum timer, making the minumum time taken, 8 minutes. 
+          </p>
+  </section>
+      <!--<section>
+          <h3>Payment</h3>
+          <p class="lead">
+               At the end of the experiment, a code will be displayed. To receive <strong>1 dollar</strong> for your participation, you must provide that code on the Crowd Flower page that redirected you to here. <strong>Remember to keep that CrowdFlower page opened while you are working on the experiment. If you close it, you will not be able to insert the code, and receive the payment.</strong> 
+          </p>
+      </section>-->
+  <section id="terms">
+    <h3>Terms</h3>
+    <p class="lead">
+       Your information will be used for research purposes only. All your data will be treated anonymously. 
+    </p>
+    <p class="lead">
+              If you agree with the information presented above and want to proceed with the experiment, please fill the following form and press the button ‘I agree’. 			
+          </p>
+    <section class="jumbotron">
+      <form class="lead"> <!-- action="{{ url_for('study') }}" method="post">-->
+        <div class="form-group row" display="none">
+          <!--<label for="inputName" class="col-md-2 control-label">Name</label>-->
+          <div class="col-md-6">
+            <input type="hidden" class="form-control" value="anonymous" display="none" id="inputName" name="name" placeholder="Name" required maxlength="45" minlength="3">
+                          <!--<span id="helpBlock" class="help-block">The text should go here.</span>-->
+          </div>
+        </div>
+                  <div class="form-group row">
+          <label class="col-md-2 control-label">Gender</label>
+          <div class="col-md-3">
+            <select class="form-control" name="gender" id="inputGender">
+                              <option value="M">Male</option>
+                              <option value="F">Female</option>
+                              <option value="D">Transgender</option>
+                              <option value="D">Gender Variant/Non-Conforming</option>
+                              <option value="D">Not Listed</option>
+                              <option value="D">Prefer Not to Answer</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group row">
+          <label class="col-md-2 control-label">Age</label>
+          <div class="col-md-2">
+            <select class="form-control" name="age" id="inputAge">
+              <option value="18-24">18-24</option>
+              <option value="25-34">25-34</option>
+              <option value="35-44">35-44</option>
+              <option value="45-54">45-54</option>
+              <option value="55-64">55-64</option>
+              <option value="65 or above">65 or above</option>
+              <option value="Prefer Not to Answer">Prefer Not to Answer</option>
+              
+            </select>
+          </div>
+        </div>
+        <div class="form-group row">
+          <label class="col-md-2 control-label">Country</label>
+          <div class="col-md-3">
+          
+            <select class="form-control" name="country" id="inputCountry" required>
+              {% set countries = ["Australia", "Austria", "Belgium", "Canada", "Czechia", "Denmark", "Estonia", "Finland", "France", "Germany", "Greece", "Hungary", "Iceland", "Ireland", "Israel", "Italy", "Japan", "Republic of Korea", "Latvia", "Luxembourg", "Mexico", "Netherlands", "New Zealand", "Norway", "Poland", "Portugal", "Slovakia", "Slovenia", "Spain", "Sweden", "Switzerland", "United Kingdom", "United States", "Prefer not to Answer"] %}
+              {% for c in countries %}
+              {% if c == "United States" %}
+                <option selected value='{{c}}'>{{c}}</option>
+              {% else %}
+                <option value='{{c}}'>{{c}}</option>
+              {% endif %}
+              {% endfor %}
+                
+            
+            </select>
+          </div>
+        </div>
+        <div class="form-group row">
+          <label class="col-md-2 control-label">Native Language</label>
+          <div class="col-md-3">
+            <!--<input type="text" class="form-control" id="inputNative" name="native_language" placeholder="Native Language" required maxlength="45" minlength="3">-->
+            <select class="form-control" id="inputNative" name="native_language">
+                              <option value="English">English</option>
+                              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group row">
+          <label class="col-md-2 control-label">English Proficiency Level</label>
+          <div class="col-md-3">
+            <select class="form-control" id="inputProf" name="english_proficiency_level">
+                              <option value="native">Native</option>
+                              <option value="fluent">Fluent</option>
+                              <option value="basic">Basic</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group row">
+          <div class="col-md-3">
+            <button id="intro_submit_button" type="submit" class="btn btn-primary">I agree</button>
+          </div>
+          <script>
+            window.onload=function(){
+            const submit_button = document.getElementById("intro_submit_button");
+
+            submit_button.addEventListener("click", send_custom);
+            }
+
+            function send_custom(event){
+              event.preventDefault();
+              submit_credentials('{{session_id}}', '{{participant_id}}');
+
+            }
+
+          </script>
+        </div>
+      </form>
+    </section>
+  </section>
+</div>
+<footer class="footer">
+  <p> Reproduction of a scientific experiment by Tilburg center for Cognition and Communication - Tilburg University 2018. Reproduced for the ReproHum project @ Dublin City University, by partner labs @ University of Aberdeen / Ruhr University Bochum, 2025</p>
+</footer>
+</body>
+</html>

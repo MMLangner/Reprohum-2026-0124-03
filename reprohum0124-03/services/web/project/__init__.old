@@ -1,0 +1,638 @@
+# This is the webapp for hosting Prolific surveys for the Edinburgh Napier University lab within the reprohum project.
+# The data is in csv format, containing the data from the survey. File name should be data.csv
+# The user interface is the interface.html file, which is a template for the survey.
+# Each interface has the following structure ${outputb1} where inside the brackets is the name of the variable.
+# There can be multiple variables - which should be defined in the python code to match the variable names in the csv file.
+import json
+import jinja2
+from datetime import datetime
+from flask import Flask, render_template, request, redirect, url_for, render_template_string, send_from_directory
+import csv
+import pandas as pd
+import re
+import uuid as uuid_lib
+import os
+from random import shuffle
+import numpy as np
+#import project.data_manager_bp as dm
+import os
+import html
+from datetime import datetime, timezone
+import random
+import sqlite3
+from uuid import uuid4
+from flask_sqlalchemy import SQLAlchemy
+import psycopg2
+
+MAX_TIME = 3600  # Maximum time in seconds that a task can be assigned to a participant before it is abandoned - 1 hour = 3600 seconds
+                 # Should probably note the 1hr limit on the interface/instructions.
+                 # NOTE: If you do not want to expire tasks, set this to a very large number, 0 will not work.
+
+
+
+# connection = psycopg2.connect(database="postgres", user='postgres', password='docker', host="localhost", port=5432)
+
+# cursor = connection.cursor()
+
+# sql_context ="""
+# select 
+#     *
+# from 
+#     public.metrics sm
+# where 
+#     sm.metric_name not like '%test%'
+# group by 
+#     sm.metric_name
+# """
+
+
+# cursor.execute(sql_context)
+
+# # Fetch all rows from database
+# record = cursor.fetchall()
+
+
+
+### study data from file
+ 
+rom_data = {}
+
+reg_df = pd.read_csv('project/rom_input/reprohum_reg_data.csv')
+
+for id in reg_df["id"]:
+
+    this_trial = reg_df.loc[reg_df["id"] == id]
+
+    list_id = this_trial["list_id"].item()
+
+    trial_id = this_trial["trial_id"].item()
+
+    text_snippet = this_trial["text_snippet"].item()
+
+    rdf_data = {} 
+
+
+    for i in range(1,8):
+
+        # exclude empty rdfs for those with less than 7 triples
+        if pd.isna(this_trial[f"rel_{i}"].item()):
+            continue
+        
+        
+        rdf_data[i] = {}
+        rdf_data[i]["subj"] = this_trial[f"subj_{i}"].item()
+        rdf_data[i]["rel"] = this_trial[f"rel_{i}"].item()
+        rdf_data[i]["pat"] = this_trial[f"pat_{i}"].item()
+    
+    rom_data[list_id] = rom_data.get(list_id, {})
+    rom_data[list_id][trial_id] = rom_data[list_id].get(trial_id, {})
+    rom_data[list_id][trial_id]["text_snippet"] = html.unescape(text_snippet.replace("b'", "").replace("\\n\'", ""))
+    rom_data[list_id][trial_id]["rdf_data"] = rdf_data
+    rom_data[list_id][trial_id]["trial_id"] = trial_id
+
+
+
+# IDpedia:)
+
+# list_id: 1 to 6, six lists of 24 trials each, configured by original authors
+# trial_id: id for each of the WebNLG instances, each id is associated with 6 text snippets (trials) from different systems + original text
+# session_id: id supplied from prolific, needed for posting to prolific when a participant has completed
+# prolific_id: Id for each participant
+# task_id: id of the task, 60 tasks in a whole (10 per list)
+# item_id: ordinal id for trials, such that we can identify in which (randomly shuffled) order the trials were presented
+
+# endOfIDpedia
+
+#create app
+
+
+
+# TODO: Might require adding CORS headers to allow requests. See https://flask-cors.readthedocs.io/en/latest/
+app = Flask(__name__) # Create the flask app
+app.config.from_object("project.config.Config")
+
+
+### database stuff
+
+### django-style Postgresql schemata
+# 
+
+db = SQLAlchemy(app)
+
+
+class Participant(db.Model):
+    __tablename__ = "participants"
+
+    prolific_id = db.Column(db.String(128), primary_key=True) 
+    age = db.Column(db.Integer)
+    nationality = db.Column(db.String(128), nullable=False)
+    sex = db.Column(db.String(128), nullable=False)
+    proficiency = db.Column(db.String(128), nullable=False)
+    native_language = db.Column(db.String(128), nullable=False)
+    name = db.Column(db.String(128), nullable=False)
+
+    def __init__(self, pid, name, age, nationality, sex, prof, nat):
+        self.prolific_id = pid
+        self.name = name
+        self.age = age
+        self.nationality = nationality
+        self.sex = sex
+        self.proficiency = prof
+        self.native_language = nat
+
+
+class Task(db.Model):
+    __tablename__ = "tasks"
+
+    t_id = db.Column(db.String(128), primary_key=True)
+    list_id = db.Column(db.Integer, nullable=False)
+    prolific_id = db.Column(db.String(128), nullable=True)
+    time_allocated = db.Column(db.String(128), nullable=True)
+    session_id = db.Column(db.String(128), nullable=True)
+    status = db.Column(db.String(128), nullable=False)
+
+    def __init__(self, t_id, list_id, pid, time, sid, status):
+
+        self.t_id = t_id
+        self.list_id = list_id
+        self.prolific_id = pid
+        self.time_allocated = time
+        self.session_id = sid
+        self.status = status
+
+
+class Result(db.Model):
+    __tablename__ = "results"
+
+    id = db.Column(db.String(128), unique=True, primary_key=True)
+    json_string = db.Column(db.Text)
+    prolific_id = db.Column(db.String(128))
+
+
+    def __init__(self, id, json, pid):
+
+        self.id = id
+        self.json_string = json
+        self.prolific_id = pid
+
+
+COMPLETIONS_PER_TASK = 10  # Number of times each task should be completed by different participants
+NUMBER_OF_TASKS = 6  # Number of tasks to create in the database
+
+import sqlite3
+from uuid import uuid4
+
+# Creates the DB file if it doesn't exist, and creates the tables if they don't exist.
+
+def initTasks(db):
+    """
+    Initializes a specified number of tasks in the 'tasks' table with default values.
+    Each task will have multiple entries (as defined by COMPLETIONS_PER_TASK) with unique IDs but the same task number.
+
+    :param num_tasks: The number of tasks to initialize.
+    :param db_file: The SQLite database file.
+    """
+    default_status = 'waiting'
+    #null = SQLAlchemy.null()
+    
+    all_tasks = []
+    # Insert the specified number of tasks, repeated according to COMPLETIONS_PER_TASK
+    for list_id in range(1, NUMBER_OF_TASKS + 1):
+        for _ in range(COMPLETIONS_PER_TASK):
+            # Generate a unique ID for the task
+            task_id = str(uuid4())
+            # Execute the SQL query
+            all_tasks.append(Task(task_id, list_id, None, None, None, default_status))
+    db.session.add_all(all_tasks)
+    db.session.commit()
+    
+    
+# --------------------------------------------------
+
+
+
+
+#print(rom_data)        
+
+# Create a list of the column names in the csv file
+#column_names = df.columns.values.tolist()
+
+# Create a dictionary of tasks, where each task is a row in the csv file
+# This should probably be saved to a file rather than in memory, so that we can restart the server and not lose data.
+#tasks = {i: {"completed_count": 0, "participants": [], "assigned_times": []} for i in range(len(df))}
+
+
+
+
+
+
+### data manager
+
+
+#def create_connection(db):
+    
+
+    #connection = psycopg2.connect(database="reprohum_reg_db", user='reprohum_reg_app', password='reprohum', host="localhost", port=5432)
+
+    #cursor = connection.cursor()
+
+    #session = db.session()
+    #cursor = session.execute(sql).cursor
+# 
+# This function will allocate a task to a participant (prolific_id)
+# The allocated task will be updated to have the status 'allocated' and the prolific_id, and session_id and time_allocated will be set.
+# It will return the task ID and the task number
+# First the function will check if the participant has already been allocated a task (one that is not of status "completed") and return that task if so
+# If not, it will find a task that has been assigned less than three times and assign it to the participant
+# If no tasks are available, it will return None
+def allocate_task(prolific_id, session_id):
+    """
+    Allocates a task to a participant based on given criteria.
+
+    Parameters:
+    prolific_id (str): The ID of the participant.
+    session_id (str): The session ID.
+
+    Returns:
+    tuple: (task_id, task_number) if a task is allocated, None if no tasks are available,
+           or a message and -1 in case of a database error.
+    """
+    
+        
+    # equivalent to "SELECT id, list_id FROM tasks WHERE prolific_id=? AND status!='completed'", (prolific_id,)
+    alloca = db.session.query(Task).where(Task.prolific_id == prolific_id, Task.status == "completed")
+    allocated_tasks = db.session.scalars(alloca)
+
+        # Check if the participant has an incomplete allocated task
+    if len([x for x in allocated_tasks]) > 0:
+        this_task = allocated_tasks.first()
+        return this_task.t_id, this_task.list_id
+
+    else:
+
+        # Find a task that hasn't been assigned to this participant and has been assigned less than three times
+        
+        #equivalent to """
+        #    SELECT id, list_id FROM tasks 
+        #    WHERE status='waiting' AND list_id NOT IN (
+        #        SELECT list_id FROM tasks WHERE prolific_id=? AND status='completed'
+        #    )
+        # """, (prolific_id,))
+
+        already_ = db.session.scalars(db.session.query(Task.list_id).where(Task.prolific_id == prolific_id, Task.status == "completed"))
+        #waiting_tasks = db.session.select(Task.t_id, Task.list_id).where(Task.status == "waiting" and Task.list_id not in already_).as_scalar()
+
+        waiting_tasks = db.session.scalars(db.session.query(Task).where(Task.status == "waiting", Task.list_id.not_in(already_)))
+        
+        for x in waiting_tasks:
+            print(x.t_id, x.list_id, x.prolific_id)
+            task_limit = db.session.scalars(db.session.query(Task).where(Task.list_id == x.list_id, Task.status == "allocated"))
+            if len([x for x in task_limit]) < 10:
+                db.session.query(Task).filter_by(t_id = x.t_id).update(dict(status="allocated", prolific_id=prolific_id, time_allocated=datetime.now(timezone.utc), session_id=session_id))
+                db.session.commit()
+                return x.t_id, x.list_id
+            else:
+                print("No tasks left")
+                return None
+
+#    except:
+#        db.session.rollback()
+#        # Consider logging the error
+#        return "Database Error", -1
+
+# This function will be run periodically and expire tasks that have been allocated for too long
+# eg 2023-11-27 15:45:30.123456
+def expire_tasks(time_limit=3600):
+    """
+    Expires tasks that have been allocated for longer than a specified time limit.
+
+    This function checks all tasks with the status 'allocated' and compares the
+    time they were allocated with the current time. If the time elapsed since
+    allocation is greater than the time limit, the task's status is reset to 'waiting'.
+
+    Parameters:
+    time_limit (int): The time limit in seconds. Tasks allocated for longer than this
+                      duration will be expired. Defaults to 3600 seconds (1 hour).
+
+    Returns:
+    None: The function doesn't return a value but updates the tasks in the database
+          if they exceed the time limit.
+    """
+    try:
+        
+
+        allocated_tasks = db.session.scalars(db.session.query(Task).where(Task.status == "allocated"))
+        current_time = datetime.now(timezone.utc)
+        for t in allocated_tasks:   
+            delta = (current_time - t.allocated_time).seconds
+            if delta > time_limit:
+                db.session.query(Task).filter_by(t_id = t.t_id).update(dict(status="waiting", prolific_id=None, time_allocated=None, session_id=None))
+        db.session.commit()
+
+
+    except:
+        print(f"An error occurred trying to expire tasks")
+
+def complete_task(id, json_string, prolific_id):
+    """
+    Completes a task assigned to a participant and records the result.
+
+    This function checks if the task with the given ID is allocated to the participant
+    identified by their prolific ID. If so, it updates the task's status to 'completed'
+    and inserts the task result (provided as a JSON string) into the results table.
+
+    Parameters:
+    id (str): The ID of the task to be completed.
+    json_string (str): A JSON string representing the result of the task.
+    prolific_id (str): The ID of the participant who is completing the task.
+
+    Returns:
+    int: -1 if the task is not allocated to the participant, otherwise no explicit return value.
+    """
+    
+    this_task = db.session.scalars(db.session.query(Task).where(Task.t_id == "afdg", Task.prolific_id == "z1"))
+    if len([x for x in this_task]) == 0:
+        print("empty!")
+        return -1
+    else:
+        result_uuid = str(uuid4())
+        db.session.query(Task).filter_by(t_id = id, prolific_id = prolific_id).update(dict(status="completed"))
+        db.session.add(Result(id=result_uuid, json_string=json_string, prolific_id=prolific_id))
+        db.session.commit()
+
+
+
+def get_all_tasks():
+    """
+    Retrieves all tasks from the tasks table in the database.
+
+    This function queries the database for all entries in the tasks table.
+    It is intended to fetch every task, regardless of its status or other attributes.
+
+    Returns:
+    list: A list of tuples, where each tuple represents a task with all its database fields.
+          Returns None if a database error occurs.
+    """
+    try:
+        task_data = []
+        all_tasks = db.session.scalars(db.session.query(Task))
+        for x in all_tasks:
+            task_data.append(tuple([x.t_id, x.list_id, x.prolific_id, x.time_allocated, x.session_id, x.status]))
+        return task_data
+    except sqlite3.Error as e:
+        print(f"An error occurred compiling all tasks")
+        return None
+    
+
+def get_specific_result(result_id):
+    """
+    Retrieves a specific result from the results table based on the result ID.
+
+    This function is designed to query the database for a single entry in the results
+    table that matches the provided result ID. It returns the specific result associated
+    with that ID.
+
+    Parameters:
+    result_id (int): The ID of the result to be retrieved.
+
+    Returns:
+    tuple: A tuple representing the result with all its database fields, or None if
+           the result is not found or a database error occurs.
+    """
+    try:
+        alls = db.session.scalars(db.session.query(Result).where(Result.id == result_id))
+        spec = alls.first()
+        return tuple([spec.id, spec.json_string, spec.prolific_id])
+    except:
+        print(f"An error occurred retrieving specific result")
+        return None
+
+
+def register_participant(pid, name, age, gender, country, native, prof):
+
+    # connection = psycopg2.connect(database="reprohum_reg_db", user='reprohum_reg_app', password='reprohum', host="localhost", port=5432)
+
+    # cursor = connection.cursor()
+    # cursor.execute("INSERT INTO participants (prolific_id, name, age, nationality, sex, proficiency, native_language) VALUES (?, ?, ?, ?, ?, ?, ?)", (pid, name, age, country, gender, prof, native))
+    # connection.commit()
+    db.session.add(Participant(prolific_id=pid, name=name, age=age, gender=gender, country=country, native=native, prof=prof))
+    db.session.commit()
+
+
+
+
+
+
+
+
+
+# Routes
+
+# This is the index route, which will just say nothing here. If it gets a POST request, it will save the HIT response JSON to a file.
+# NOTE: The HTML interfaces should be updated with a button that compiles the answers as a JSON object and POSTS to this app.
+# TODO: Validate submission is JSON and has required fields (task_id, prolific_pid, etc) else could crash
+
+@app.route('/return_to_prolific', methods=['GET', 'POST'])
+def return_to_prolific():
+
+    prolific_pid = request.args.get('prolific_pid')
+    session_id = request.args.get('session_pid')
+
+    return render_template("return.html", session_id=session_id, prolific_pid=prolific_pid)
+
+@app.route('/completion_error')
+def error():
+
+    return render_template("error.html")
+
+@app.route('/submit', methods=['GET', 'POST'])
+def index():
+
+    if request.method == 'POST':
+        # Print JSON from POST request
+        print(request.json)
+
+        # Save JSON to file with task_id as the folder and uuid as the filename
+        task_id = request.json['task_id']
+        session_id = request.json['session_id']
+        prolific_pid = request.json['prolific_pid']
+        folder_path = os.path.join('data', str(task_id))
+        os.makedirs(folder_path, exist_ok=True)  # Create folder if it doesn't exist
+
+        file_path = os.path.join(folder_path, f"{task_id}.json")
+
+        with open(file_path, 'w') as outfile:
+            json.dump(request.json, outfile)
+
+        # Complete the task
+        print(task_id, request.json, prolific_pid)
+
+        complete = complete_task(task_id, str(request.json), prolific_pid)
+
+        if complete == -1:
+            print("Something went wrong")
+            return redirect(url_for('error'))
+        
+
+        print("everything worked fine")
+        return redirect(url_for('return_to_prolific', prolific_pid=prolific_pid, session_id=session_id))
+    else:
+        return "Nothing Here.", 200
+
+
+
+@app.route("/static/<path:filename>")
+def staticfiles(filename):
+    return send_from_directory(app.config["STATIC_FOLDER"], filename)
+
+
+@app.route('/intro/', methods=['POST', 'GET'])
+def intro():
+
+    # Get PROLIFIC_PID, STUDY_ID and SESSION_ID from URL parameters
+    prolific_pid = request.args.get('PROLIFIC_PID')
+    session_id = request.args.get('SESSION_ID')
+
+
+
+    return render_template('intro.html', participant_id=prolific_pid, session_id=session_id)
+
+
+
+# This route is used for testing the interface on specific rows of the csv file
+@app.route('/row/<int:row_id>', methods=['GET', 'POST'])
+def row(row_id):
+    # Read the HTML template file
+    with open('templates/interface.html', 'r') as html_file:
+        html_content = html_file.read()
+    # Preprocess the HTML content
+    processed_html = preprocess_html(html_content, df.iloc[[row_id]], row_id)
+    return render_template_string(processed_html)
+
+
+
+@app.route('/prepare/', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        print("POST")
+        print(request.is_json)
+        # Print JSON from POST request
+        #data = request.get_json(force=True)
+        #print(data)
+        # Save JSON to file with task_id as the folder and uuid as the filename
+        print(request.json, type(request.json))
+        session_id = request.json['session_id']
+        prolific_pid = request.json['prolific_pid']
+
+        name = request.json['name']
+        age = request.json['age']
+        gender = request.json['gender']
+        country = request.json['country']
+        native_language = request.json['native_language']
+        english_proficiency_level = request.json['lang_prof']
+  
+        # write user_data to a database table
+        #register_participant(prolific_pid, name, age, gender, country, native_language, english_proficiency_level)
+
+
+        return redirect(url_for('study', PROLIFIC_PID=prolific_pid, SESSION_ID=session_id))#, code=307)
+
+
+# Study route, get PROLIFIC_PID, STUDY_ID and SESSION_ID from URL parameters
+# This route will assign a task to a participant and return the HTML interface for that task
+# It *should* be updated to allow the participant to continue where they left off if they refresh the page - this will be implemented using the PROLIFIC_PID searching on pending tasks.
+# TODO: Some kind of handling for case where there are no tasks left for that worker - i.e there are tasks left but none that they haven't already completed
+@app.route('/study/', methods=['GET', 'POST'])
+def study():
+
+    print("routed to study")
+    prolific_pid = request.args.get('PROLIFIC_PID')
+    session_id = request.args.get('SESSION_ID')
+
+    print(prolific_pid, session_id)
+    # Read the HTML template file
+    #with open('html/interface.html', 'r') as html_file:
+    #    html_content = html_file.read()
+
+    # Allocate task or find already allocated task
+    
+    if prolific_pid is None or session_id is None:
+        return "PROLIFIC_PID and SESSION_ID are required parameters.", 400
+    else:
+        task_id, list_id = allocate_task(prolific_pid, session_id)
+
+        # If there is a database error, return the error message and status code
+        if task_id == "Database Error - Please try again, if the problem persists contact us." and list_id == -1:
+            print("could not allocate task due to database error")
+            return task_id, 500
+
+
+        # If no task is available, return a message
+        if task_id is None:
+            return "No tasks available", 400
+        
+
+
+
+        # mechanism for preparing data for jinja template, randomize order, etc.
+
+        trial_keys = list(rom_data[int(list_id)].keys())
+
+        random.shuffle(trial_keys)
+
+        print("shuffled_trials: ", trial_keys)
+        #random.seed(datetime.now().timestamp())
+        template_data = [rom_data[int(list_id)][x] for x in trial_keys]
+
+
+
+        print(os.getcwd())
+        #html_content = preprocess_html(html_content, df.iloc[[list_id]], task_id) # Params: html_content, df, task_id=-1
+        #html_content += f'<input type="hidden" id="prolific_pid" value="{prolific_pid}">'
+        #html_content += f'<input type="hidden" id="session_id" value="{session_id}">'
+        return render_template("interface.html", session_id=session_id, task_id=task_id, list_id = list_id, prolific_pid=prolific_pid, data=template_data)
+        #return redirect(url_for('/study', session_id=session_id, task_id=task_id, list_id = list_id, prolific_pid=prolific_pid, data=template_data))
+
+# This route is used for testing - it will return the tasks dictionary showing the number of participants assigned to each task
+@app.route('/tasksallocated')
+def aloced():
+
+    tasks = get_all_tasks()
+
+    return tasks
+
+# Show a specific task_id's result in the database
+@app.route('/results/<task_id>')
+def results(task_id):
+    result = get_specific_result(str(task_id))
+    if result is None:
+        return "No result found for task_id: " + str(task_id), 400
+    return str(result)
+
+
+# Check for tasks that have been assigned for more than 1 hour and then open them up again for participants to complete. Code at bottom of file will make this run every hour.
+# The route is set up for testing to manually check for abandoned tasks. It will return a list of abandoned tasks that have been opened up again.
+@app.route('/abdn')
+def check_abandonment():
+    print("Checking for abandoned tasks...")
+    expire_tasks(MAX_TIME) # Do not update MAX_TIME manually, use MAX_TIME variable
+
+    tasks = get_all_tasks()
+
+    return tasks, 200
+
+# Scheduler
+
+# Run the check_abandonment function every hour - this has to be before the app.run() call
+from apscheduler.schedulers.background import BackgroundScheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=check_abandonment, trigger="interval", seconds=MAX_TIME) # Do not update seconds manually, use MAX_TIME
+scheduler.start()
+
+
+# CLI Entry Point (for testing) - python main.py
+
+if __name__ == '__main__':
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+    app.run(debug=True)
+

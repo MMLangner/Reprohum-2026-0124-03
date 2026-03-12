@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css" integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js" integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1" crossorigin="anonymous"></script>
+  <!-- timer.js -->
+  <script type="text/javascript" src="{{ url_for('static', filename='item_collator_v2.js') }}"></script>
+</head>
+
+<body class="container"> <!--onload="load_session('{{session_id}}', '{{participant_id}}')">-->
+<div class="row">
+</div>
+<div class="text-center">
+  <p class="lead">
+          ReproHum: Investigating Reproducibility of Human Evaluations in Natural Language Processing.
+  </p>
+</div>
+<div class="text-justify">
+  <section id="Proceedings">
+    <p class="lead">
+              
+<Strong>Consent form for participation in the research project ReproHum: Investigating Reproducibility of Human Evaluations in Natural Language Processing </Strong> <br>
+Please read the statements below and tick the final box to confirm you have read and understood the statements and upon doing so agree to participate in the project. 
+
+    </p>
+
+    <div class="jumbotron lead">
+    I confirm that the research project ReproHum: Investigating Reproducibility of Human Evaluations in Natural Language Processing has been explained to me. I have had the opportunity to ask questions about the project and have had these answered satisfactorily. <br> <br>
+
+I consent to the material I contribute being used to generate insights for the research project ReproHum: Investigating Reproducibility of Human Evaluations in Natural Language Processing. <br><br>
+
+I understand that my participation in this research is voluntary and that I may withdraw from the research at any time (until the point of data anonymisation or analysis) without providing a reason. <br><br>
+
+I consent to allow the fully anonymised data to be used for future publications and other scholarly means of disseminating the findings from the research project. <br><br>
+
+I understand that the information/data acquired will be securely stored by researchers, but that appropriately anonymised data may in future be made available to others for research purposes.   I understand that the University may publish appropriately anonymised data in appropriate data repositories for verification purposes and to make it accessible to researchers and other research users.  
+   
+The participant information sheet can be found here: <a href="{{ url_for('static', filename='participant_information_sheet.pdf') }}">sheet</a>
+
+</div>
+
+    
+  </section>
+
+      <section>
+        <form method = "post" action ="{{url_for('index', PROLIFIC_PID=participant_id, SESSION_ID=session_id)}}">
+         <div class="form-group">
+      <div class="radio">
+        <label class="radio-inline">
+          <strong>I confirm that I have read and understood the above statements (check the box).</strong>
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="consent" id="consent" value="1" required>  &#9;  
+        </label>
+      </div>
+      <span class="form-text text-muted"></span>
+    </div>
+    <br>
+     <div class="form-group">
+              <!--<input type="hidden" name="url" value="" />-->
+        <button id="consent_button" type="submit" class="btn btn-primary">Continue</button>
+  
+    </div>
+
+
+    </form>
+      </section>
+</div>
+<footer class="footer">
+  <p> Reproduction of a scientific experiment by Tilburg center for Cognition and Communication - Tilburg University 2018. Reproduced for the ReproHum project @ Dublin City University, by partner labs @ University of Aberdeen / Ruhr University Bochum, 2025</p>
+</footer>
+
+
+</body>
+</html>

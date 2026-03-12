@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>
+   Semantic Data
+ </title>
+</head>
+<!--<body class="container" onload="load_session('{{session_id}}', '{{prolific_pid}}')",>-->
+<body class="container" onload="initButton('0_button', '0_timer')">
+   
+{% for trial_n in range(24) %}  
+{% if trial_n > 0 %}
+    {% set style_att = "none" %}
+{% else %}
+    {% set style_att = "block" %}
+{% endif %}     
+<item class="container" id="{{trial_n}}", style="display:{{style_att}}">
+  <br/>
+  <header>
+    <div class="row justify-content-center">
+      <div class="col-6">
+        <h5 class="text-center">Data</h5>
+        <table class="table table-striped small">
+
+          {% for n in range(data[trial_n]['rdf_data'].keys()|length) %}
+          
+          <tr>
+            <td>{{ data[trial_n]['rdf_data'][n+1]['subj'] }}</td>
+            <td><strong>{{ data[trial_n]['rdf_data'][n+1]['rel'] }}</strong></td>
+            <td>{{ data[trial_n]['rdf_data'][n+1]['pat'] }}</td>            
+          </tr>
+
+          {% endfor %}
+
+        </table>
+      </div>
+    </div>
+</header>
+{% set trial = data[trial_n]['trial_id'] %}
+<div class="text-center" id="article">
+  <h5 class="text-center">Summary</h5>
+  <p class="lead" id="text_article"> {{data[trial_n]['text_snippet']|safe}} </p>
+</div>
+<footer class="jumbotron text-center">
+  <form> <!-- action="../routing.php" method="post">-->
+    <div class="form-group" style="display: none">
+      <label>Fluency</label>
+      <div class="radio">
+        <label class="radio-inline">
+          <strong>Very Bad</strong>
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="fluency_{{trial}}_list_{{list_id}}" id="inlineRadio1_{{trial}}_list_{{list_id}}_f" value="1"> 1
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="fluency_{{trial}}_list_{{list_id}}" id="inlineRadio2_{{trial}}_list_{{list_id}}_f" value="2"> 2
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="fluency_{{trial}}_list_{{list_id}}" id="inlineRadio3_{{trial}}_list_{{list_id}}_f" value="3"> 3
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="fluency_{{trial}}_list_{{list_id}}" id="inlineRadio4_{{trial}}_list_{{list_id}}_f" value="None" checked> 4
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="fluency_{{trial}}_list_{{list_id}}" id="inlineRadio5_{{trial}}_list_{{list_id}}_f" value="5"> 5
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="fluency_{{trial}}_list_{{list_id}}" id="inlineRadio6_{{trial}}_list_{{list_id}}_f" value="6"> 6
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="fluency_{{trial}}_list_{{list_id}}" id="inlineRadio7_{{trial}}_list_{{list_id}}_f" value="7"> 7
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <strong>Very Good</strong>
+        </label>
+      </div>
+      <span class="form-text text-muted">Does the text flow in a natural, easy to read manner?</span>
+    </div>
+    <br>
+    <div class="form-group" style="display: none">
+      <label>Grammaticality</label>
+      <div class="radio">
+        <label class="radio-inline">
+          <strong>Very Bad</strong>
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="grammar_{{trial}}_list_{{list_id}}" id="inlineRadio1_{{trial}}_list_{{list_id}}_g" value="1"> 1
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="grammar_{{trial}}_list_{{list_id}}" id="inlineRadio2_{{trial}}_list_{{list_id}}_g" value="2"> 2
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="grammar_{{trial}}_list_{{list_id}}" id="inlineRadio3_{{trial}}_list_{{list_id}}_g" value="3"> 3
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="grammar_{{trial}}_list_{{list_id}}" id="inlineRadio4_{{trial}}_list_{{list_id}}_g" value="None" checked> 4
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="grammar_{{trial}}_list_{{list_id}}" id="inlineRadio5_{{trial}}_list_{{list_id}}_g" value="5"> 5
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="grammar_{{trial}}_list_{{list_id}}" id="inlineRadio6_{{trial}}_list_{{list_id}}_g" value="6"> 6
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="grammar_{{trial}}_list_{{list_id}}" id="inlineRadio7_{{trial}}_list_{{list_id}}_g" value="7"> 7
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <strong>Very Good</strong>
+        </label>
+      </div>
+      <span class="form-text text-muted">Is the text grammatical (no spelling or grammatical errors)?</span>
+    </div>
+    <br>
+    <div class="form-group">
+      <label>Clarity</label>
+      <div class="radio">
+        <label class="radio-inline">
+          <strong>Very Bad</strong>
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="clarity_{{trial}}_list_{{list_id}}" id="inlineRadio1_{{trial}}_list_{{list_id}}_c" value="1"> 1
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="clarity_{{trial}}_list_{{list_id}}" id="inlineRadio2_{{trial}}_list_{{list_id}}_c" value="2"> 2
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="clarity_{{trial}}_list_{{list_id}}" id="inlineRadio3_{{trial}}_list_{{list_id}}_c" value="3"> 3
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="clarity_{{trial}}_list_{{list_id}}" id="inlineRadio4_{{trial}}_list_{{list_id}}_c" value="4" checked> 4
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="clarity_{{trial}}_list_{{list_id}}" id="inlineRadio5_{{trial}}_list_{{list_id}}_c" value="5"> 5
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="clarity_{{trial}}_list_{{list_id}}" id="inlineRadio6_{{trial}}_list_{{list_id}}_c" value="6"> 6
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <input type="radio" name="clarity_{{trial}}_list_{{list_id}}" id="inlineRadio7_{{trial}}_list_{{list_id}}_c" value="7"> 7
+        </label>
+        <label class="radio-inline" style="margin-left:0.5cm">
+          <strong>Very Good</strong>
+        </label>
+      </div>
+      <span class="form-text text-muted">Does the text clearly express the data?</span>
+    </div>
+
+    {% if trial_n < 23 %}
+
+    <div class="form-group">
+      <!--<input type="hidden" name="url" value="" />-->
+      <button id="{{trial_n}}_button" type="button" onclick="item_collate('fluency_{{trial}}_list_{{list_id}}', 'grammar_{{trial}}_list_{{list_id}}', 'clarity_{{trial}}_list_{{list_id}}', '{{trial_n}}', '{{trial}}',
+       '{{session_id}}', '{{task_id}}', '{{prolific_pid}}', '{{list_id}}')" class="btn btn-primary">Submit</button>
+                                                <!-- radio fluency                         radio grammar                                      radio clarity       trial ordinal    trial_id     session_id         task_id           pid -->
+      <span id="{{trial_n}}_timer" class="form-text text-muted">00:20</span>
+
+      {% elif trial_n >= 23 %}
+
+      <div class="form-group">
+        <!--<input type="hidden" name="url" value="" />-->
+        <button id="{{trial_n}}_button" type="button" onclick="submit_data('fluency_{{trial}}_list_{{list_id}}', 'grammar_{{trial}}_list_{{list_id}}', 'clarity_{{trial}}_list_{{list_id}}', '{{trial_n}}', '{{trial}}',
+         '{{session_id}}', '{{task_id}}', '{{prolific_pid}}', '{{list_id}}', '{{ url_for("index") }}')" class="btn btn-primary">Submit</button>
+                                                  <!-- radio fluency                         radio grammar                                      radio clarity       trial ordinal    trial_id     session_id         task_id           pid -->
+        <span id="{{trial_n}}_timer" class="form-text text-muted">00:20</span>
+  
+      {% else %}
+      <div>Something's wrong</div>
+      {% endif %}
+    </div>
+
+
+  </form>
+</footer>
+</item>
+{% endfor %}
+<input type="hidden" id="prolific_pid" value="{{prolific_pid}}">
+<input type="hidden" id="session_id" value="{{session_id}}">
+<input type="hidden" id="list_id" value="{{list_id}}">
+<input type="hidden" id="task_id" value="{{task_id}}">
+
+
+
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css" integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js" integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1" crossorigin="anonymous"></script>
+  <!-- timer.js -->
+  <script type="text/javascript" src="{{ url_for('static', filename='item_collator_v2.js') }}"></script>
+  
+  
+</body>
+</html>
